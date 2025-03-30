@@ -1,0 +1,24 @@
+# Global
+.DS_Store
+*.log
+*.sqlite3
+.env
+__pycache__/
+*.pyc
+
+# Python backend (chatbot/)
+chatbot/__pycache__/
+chatbot/.env
+chatbot/*.pyc
+
+# Node frontend (portfolio/)
+portfolio/node_modules/
+portfolio/.env.local
+portfolio/.next/
+portfolio/dist/
+portfolio/build/
+portfolio/.cache
+
+# VS Code
+.vscode/
+.env
