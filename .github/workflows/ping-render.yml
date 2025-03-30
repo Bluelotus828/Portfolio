@@ -11,4 +11,4 @@ jobs:
 
     steps:
       - name: Curl to keep Render backend alive
-        run: curl -s https://portfolio-chatbot-41fr.onrender.com/chat || true
+        run: curl https://portfolio-chatbot-41fr.onrender.com || true
