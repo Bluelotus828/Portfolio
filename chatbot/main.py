@@ -84,3 +84,8 @@ def ask(query: Query):
     })
 
     return {"answer": response["answer"]}
+
+@app.get("/")
+def root():
+    """Simple keep-alive route for uptime checks"""
+    return {"message": "Backend is alive"}
