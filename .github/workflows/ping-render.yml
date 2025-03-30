@@ -1,0 +1,14 @@
+name: Keep Render Backend Alive
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # Execute every 5 minutes
+  workflow_dispatch:        # Manual trigger support
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Curl to keep Render backend alive
+        run: curl -s https://portfolio-chatbot-41fr.onrender.com/chat || true
