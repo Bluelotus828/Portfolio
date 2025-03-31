@@ -11,4 +11,8 @@ TEMPERATURE = 0.5
 LIMIT_SECONDS = 24 * 60 * 60
 
 # Allowed frontend origins (CORS policy)
-ALLOWED_ORIGINS = ["https://guanlinyu.vercel.app"]
+ALLOWED_ORIGINS = [
+    "https://guanlinyu.vercel.app",
+    "https://www.guanlinyu.com",
+    "https://guanlinyu.com",
+]
