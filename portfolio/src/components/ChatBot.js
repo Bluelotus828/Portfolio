@@ -4,11 +4,11 @@ import axios from "axios";
 import { CHATBOT_TEXTS, SUGGESTED_QUESTIONS } from "../constants/texts";
 import { API_URL } from "../constants/config";
 
-const ChatBot = () => {
+const ChatBot = ({ isMobile, onClose }) => {
   const [messages, setMessages] = useState([]); // Stores chat messages
   const [input, setInput] = useState(""); // Tracks user input
   const [isTyping, setIsTyping] = useState(false); // Indicates AI is typing
-  const [timeRemaining, setTimeRemaining] = useState(null); // Tracks time left for next query “timeRemaining” cannot be deleted!
+  const [timeRemaining, setTimeRemaining] = useState(null); // Tracks time left for next query "timeRemaining" cannot be deleted!
   const messagesEndRef = useRef(null); // Reference for auto-scrolling
 
   // Typewriter effect for displaying bot responses gradually
@@ -37,6 +37,12 @@ const ChatBot = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    if (timeRemaining) {
+      console.log(`Time remaining: ${timeRemaining}`);
+    }
+  }, [timeRemaining]);
 
   const handleSend = async (message) => {
     const query = typeof message === "string" ? message : input.trim(); // Ensure query is a string
@@ -80,7 +86,16 @@ const ChatBot = () => {
   };
 
   return (
-    <ChatWindow>
+    <ChatWindow $isMobile={isMobile}>
+      {/* Close button – only visible in mobile view */}
+      {isMobile && (
+        <CloseButton onClick={onClose}>✕</CloseButton>
+      )}
+      
+      <ChatHeader>
+        <div>{CHATBOT_TEXTS.WELCOME}</div>
+      </ChatHeader>
+      
       <Messages>
         {messages.map((msg, idx) => (
           <Message key={idx} $isUser={msg.sender === "user"} $isError={msg.sender === "error"}>
@@ -129,8 +144,8 @@ export default ChatBot;
 /* Styled Components */
 const ChatWindow = styled.div`
   width: 100%;
-  max-width: 500px;
-  height: 350px;
+  max-width: 600px;
+  height: 400px;
   background: #112240;
   color: white;
   display: flex;
@@ -138,6 +153,40 @@ const ChatWindow = styled.div`
   border-radius: 10px;
   overflow: hidden;
   position: relative;
+  box-shadow: ${props => props.$isMobile ? '0 5px 20px rgba(0, 0, 0, 0.3)' : 'none'};
+  
+  /* Slight size adjustment for mobile view */
+  ${props => props.$isMobile && `
+    max-width: 100%;
+    height: 400px;
+  `}
+`;
+
+const CloseButton = styled.button`
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: transparent;
+  border: none;
+  color: #8892b0;
+  font-size: 1.2rem;
+  cursor: pointer;
+  z-index: 10;
+  
+  &:hover {
+    color: #ffffff;
+  }
+`;
+
+const ChatHeader = styled.div`
+  background: #1d293e;
+  padding: 10px 15px;
+  border-bottom: 1px solid #233554;
+  font-weight: 600;
+  color: #64ffda;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 `;
 
 const Messages = styled.div`
@@ -205,6 +254,7 @@ const InputArea = styled.div`
     border: none;
     background: #0a192f;
     color: white;
+    border-radius: 4px;
   }
 
   button {
@@ -216,11 +266,18 @@ const InputArea = styled.div`
     cursor: pointer;
     border-radius: 5px;
     font-size: 0.9rem;
-    opacity: ${({ disabled }) => (disabled ? "0.5" : "1")};
-    cursor: ${({ disabled }) => (disabled ? "not-allowed" : "pointer")};
+    color: #0a192f;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    
+    &:hover:not(:disabled) {
+      background: #4cd9c4;
+    }
 
     &:disabled {
       background: #8892b0;
+      opacity: 0.5;
+      cursor: not-allowed;
     }
   }
 `;

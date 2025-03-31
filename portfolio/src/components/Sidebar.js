@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import styled from "styled-components";
 import ChatBot from "./ChatBot";
-import { SIDEBAR_TEXTS, CHATBOT_TEXTS, MENU_ITEMS } from "../constants/texts";
+import { SIDEBAR_TEXTS, MENU_ITEMS } from "../constants/texts";
 
-
-const Sidebar = ({ activeSection, scrollToSection, refs }) => {
-  const [showChat, setShowChat] = useState(true); // Default state: Chat window is open
+const Sidebar = ({ activeSection, scrollToSection, refs, isMobile }) => {
+  // Default to showing chatbot on desktop; hidden on mobile
+  const [showChat, setShowChat] = useState(!isMobile);
 
   return (
     <SidebarContainer>
@@ -13,46 +13,58 @@ const Sidebar = ({ activeSection, scrollToSection, refs }) => {
       <h2>{SIDEBAR_TEXTS.ROLE}</h2>
       <p>{SIDEBAR_TEXTS.DESC}</p>
 
-      {/* Navigation Menu */}
-      <NavMenu>
-        {MENU_ITEMS.map((item) => (
-          <NavItem
-            key={item.id}
-            className={activeSection === item.id ? "active" : ""}
-            onClick={() => scrollToSection(refs[`${item.id}Ref`])}
-          >
-            <div className="underline-container">
-              {activeSection === item.id && <div className="underline"></div>}
-            </div>
-            <span>{item.name}</span>
-          </NavItem>
-        ))}
-      </NavMenu>
+      {/* Navigation menu – visible only on desktop view */}
+      {!isMobile && (
+        <NavMenu>
+          {MENU_ITEMS.map((item) => (
+            <NavItem
+              key={item.id}
+              className={activeSection === item.id ? "active" : ""}
+              onClick={() => scrollToSection(refs[`${item.id}Ref`])}
+            >
+              <div className="underline-container">
+                {activeSection === item.id && <div className="underline"></div>}
+              </div>
+              <span>{item.name}</span>
+            </NavItem>
+          ))}
+        </NavMenu>
+      )}
 
-      {/* ChatBot section */}
-      <ChatBotWrapper>
-        <ChatToggleButton onClick={() => setShowChat(!showChat)}>💬</ChatToggleButton>
-        <SubTitle>{ CHATBOT_TEXTS.WELCOME }</SubTitle>
+      {/* ChatBot toggle button – shown on both mobile and desktop, but positioned differently */}
+      <ChatBotWrapper isMobile={isMobile}>
+        <ChatToggleButton onClick={() => setShowChat(!showChat)}>
+          💬
+        </ChatToggleButton>
       </ChatBotWrapper>
 
-      {showChat && <ChatBot />} {/* Show ChatBot only if toggled on */}
+      {/* ChatBot display – inline on desktop, floating on mobile */}
+      {showChat && (
+        isMobile ? (
+          <FloatingChatContainer>
+            <ChatBot isMobile={isMobile} onClose={() => setShowChat(false)} />
+          </FloatingChatContainer>
+        ) : (
+          <ChatBot isMobile={isMobile} />
+        )
+      )}
     </SidebarContainer>
   );
 };
 
 export default Sidebar;
 
-
 /* Styled Components */
 const SidebarContainer = styled.nav`
-  position: fixed;
-  height: 100vh;
-  top: 100px;
-  left: 100px;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  z-index: 10;
+  padding: 20px 0;
+
+  @media (min-width: 769px) {
+    padding-top: 80px;
+  }
 
   h1 {
     font-size: 3rem;
@@ -74,8 +86,15 @@ const SidebarContainer = styled.nav`
   }
 
   @media (max-width: 768px) {
-    left: 20px;
-    top: 20px;
+    padding: 10px 0;
+
+    h1 {
+      font-size: 2.5rem;
+    }
+
+    h2 {
+      font-size: 1.2rem;
+    }
   }
 `;
 
@@ -83,6 +102,7 @@ const NavMenu = styled.nav`
   display: flex;
   flex-direction: column;
   gap: 10px;
+  margin: 20px 0;
 `;
 
 const NavItem = styled.div`
@@ -96,6 +116,7 @@ const NavItem = styled.div`
   text-transform: uppercase;
   cursor: pointer;
   transition: color 0.3s ease-in-out;
+  padding: 5px 0;
 
   &:hover,
   &.active {
@@ -135,6 +156,14 @@ const ChatBotWrapper = styled.div`
   display: flex;
   align-items: center;
   gap: 10px;
+  
+  ${props => props.isMobile && `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+    margin-top: 0;
+  `}
 `;
 
 const ChatToggleButton = styled.button`
@@ -145,10 +174,38 @@ const ChatToggleButton = styled.button`
   border-radius: 30px;
   cursor: pointer;
   font-size: 1.2rem;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  }
 `;
 
-const SubTitle = styled.div`
-  color: #64ffda;
-  font-size: 0.95rem;
-  font-weight: 600;
+const FloatingChatContainer = styled.div`
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  z-index: 1000;
+  width: 90%;
+  max-width: 350px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+  animation: slideUp 0.3s ease-out;
+  
+  @keyframes slideUp {
+    from {
+      transform: translateY(50px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  @media (max-width: 400px) {
+    width: calc(100% - 40px);
+    right: 20px;
+  }
 `;
