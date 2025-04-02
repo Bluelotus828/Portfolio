@@ -3,14 +3,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain.chains import ConversationalRetrievalChain
-from langchain.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
 from dotenv import load_dotenv
+from datetime import datetime
 import os
-import time
 
 from config import RESUME_FILE, MODEL_NAME, TEMPERATURE, LIMIT_SECONDS, ALLOWED_ORIGINS
 from texts import SYSTEM_PROMPT
+
+# Import SQLite-based time state handlers
+from db import init_db, get_last_query_time, save_query_time
 
 app = FastAPI()
 
@@ -45,34 +48,30 @@ qa_chain = ConversationalRetrievalChain.from_llm(
     return_source_documents=False,
 )
 
-# Store the timestamp of the last query
-last_query_timestamp = 0  # Keeps track of the last query time
-
+# Defines the structure of the request body for the chatbot API
 class Query(BaseModel):
-    """Defines the structure of the request body for the chatbot API"""
     query: str  # User's question
     chat_history: list = []  # Supports conversation history for better context retention
 
 @app.post("/chat")
-def ask(query: Query):
-    """Handles chatbot queries and enforces a 24-hour rate limit"""
-    global last_query_timestamp
+async def ask(query: Query):
+    last_time = await get_last_query_time()  # Get last query timestamp
+    now = datetime.utcnow()
 
-    current_time = time.time()
-    time_remaining = LIMIT_SECONDS - (current_time - last_query_timestamp)
-
-    if time_remaining > 0:
-        # If accessed again within 24 hours, return an error message
-        hours = int(time_remaining // 3600)
-        minutes = int((time_remaining % 3600) // 60)
-        seconds = int(time_remaining % 60)
-        return {
-            "answer": "LIMIT_EXCEEDED",
-            "time_remaining": f"{hours}h {minutes}m {seconds}s"
-        }
+    if last_time:
+        elapsed = (now - last_time).total_seconds()
+        if elapsed < LIMIT_SECONDS:
+            remaining = LIMIT_SECONDS - elapsed
+            hours = int(remaining // 3600)
+            minutes = int((remaining % 3600) // 60)
+            seconds = int(remaining % 60)
+            return {
+                "answer": "LIMIT_EXCEEDED",  # 超过访问限制 | Access limit exceeded
+                "time_remaining": f"{hours}h {minutes}m {seconds}s"
+            }
 
     # Update the timestamp of the last query
-    last_query_timestamp = current_time
+    await save_query_time()  # Save current query time
 
     # Combine system prompt with user's question
     full_query = f"{SYSTEM_PROMPT}\n\n{query.query}"
@@ -80,7 +79,7 @@ def ask(query: Query):
     # Pass conversation history to help AI remember previous interactions
     response = qa_chain.invoke({
         "question": full_query,
-        "chat_history": query.chat_history,  # Allows for more coherent multi-turn conversations
+        "chat_history": query.chat_history,  # Pass chat history
     })
 
     return {"answer": response["answer"]}
