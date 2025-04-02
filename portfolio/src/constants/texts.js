@@ -145,7 +145,7 @@ export const FOOTER_TEXT = [
     id: 2,
     content: (
       <>
-        Runs on <strong>OpenAI</strong>. Lives on <strong>Vercel</strong> & <strong>Render</strong>.
+        Runs on <strong>OpenAI</strong>. Utilizes <strong>Upstash Redis</strong> for persistence. Lives on <strong>Vercel</strong> & <strong>Render</strong>.
       </>
     ),
   },
