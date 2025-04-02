@@ -1,34 +1,55 @@
-import aiosqlite
-from datetime import datetime
 import os
+import aiohttp
+import json
+from datetime import datetime
 
-DB_PATH = "/data/timer.db"  # SQLite database path (Render supports writing to /data)
+# Upstash REST API credentials
+REDIS_URL = os.environ.get('UPSTASH_REDIS_REST_URL')
+REDIS_TOKEN = os.environ.get('UPSTASH_REDIS_REST_TOKEN')
 
-# Initialize the database and create the table if it doesn't exist
-async def init_db():
-    os.makedirs("/data", exist_ok=True)  # Ensure /data directory exists
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("""
-            CREATE TABLE IF NOT EXISTS query_limit (
-                id INTEGER PRIMARY KEY,
-                last_query_time TEXT
-            )
-        """)  # Create table to store last query time
-        await db.commit()
+# Session for sending requests to Upstash REST API
+session = None
 
-# Save the current query time (called on successful trigger)
+# Initialize HTTP session
+def init_db():
+    global session
+    session = aiohttp.ClientSession()
+    # Upstash REST API doesn't require creating table structures
+
+# Close HTTP session
+async def close_db():
+    if session:
+        await session.close()
+
+# Execute Redis commands via REST API
+async def execute_command(command, *args):
+    if not session:
+        init_db()
+    
+    url = f"{REDIS_URL}/{command}/{'/'.join(args)}"
+    headers = {
+        "Authorization": f"Bearer {REDIS_TOKEN}"
+    }
+    
+    async with session.get(url, headers=headers) as response:
+        if response.status == 200:
+            result = await response.json()
+            return result.get('result')
+        else:
+            error_text = await response.text()
+            raise Exception(f"Redis REST API error: {error_text}")
+
+# Save current query time
 async def save_query_time():
-    now = datetime.utcnow().isoformat()  # Get current UTC time as ISO string
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("DELETE FROM query_limit")  # Remove existing entry (only store one)
-        await db.execute("INSERT INTO query_limit (last_query_time) VALUES (?)", (now,))
-        await db.commit()
+    now = datetime.utcnow().isoformat()
+    # Use SET command to save the time
+    await execute_command('set', 'last_query_time', now)
+    return True
 
-# Retrieve the last recorded query time
+# Get the last recorded query time
 async def get_last_query_time():
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute("SELECT last_query_time FROM query_limit") as cursor:
-            row = await cursor.fetchone()
-            if row:
-                return datetime.fromisoformat(row[0])  # Convert ISO string to datetime object
-    return None  # If no record found
+    # Use GET command to retrieve the time
+    time_str = await execute_command('get', 'last_query_time')
+    if time_str:
+        return datetime.fromisoformat(time_str)
+    return None

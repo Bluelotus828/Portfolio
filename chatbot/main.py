@@ -12,15 +12,15 @@ import os
 from config import RESUME_FILE, MODEL_NAME, TEMPERATURE, LIMIT_SECONDS, ALLOWED_ORIGINS
 from texts import SYSTEM_PROMPT
 
-# Import SQLite-based time state handlers
-from db import init_db, get_last_query_time, save_query_time
+# Import Upstash REST API database handling functions
+from db import init_db, close_db, get_last_query_time, save_query_time
 
 app = FastAPI()
 
-# Enable CORS to allow the frontend to access the backend API
+# Enable CORS to allow frontend to access backend API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,  # Change this to your frontend URL if deployed
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -29,29 +29,37 @@ app.add_middleware(
 # Load variables from .env
 load_dotenv() 
 
-# Load OpenAI API Key
+# Load OpenAI API key
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
-# Load the resume PDF and create a vector database
-loader = PyPDFLoader(RESUME_FILE)  # Load the resume file
-docs = loader.load()
-vectorstore = FAISS.from_documents(docs, OpenAIEmbeddings())  # Convert documents into vector embeddings
-retriever = vectorstore.as_retriever()  # Create a retriever for search
+# Initialize HTTP client session
+init_db()
 
-# Initialize GPT-4o-mini and enable `ConversationalRetrievalChain`
+# Close session when application shuts down
+@app.on_event("shutdown")
+async def shutdown_event():
+    await close_db()
+
+# Load resume PDF and create vector database
+loader = PyPDFLoader(RESUME_FILE)
+docs = loader.load()
+vectorstore = FAISS.from_documents(docs, OpenAIEmbeddings())
+retriever = vectorstore.as_retriever()
+
+# Initialize GPT model and enable `ConversationalRetrievalChain`
 llm = ChatOpenAI(temperature=TEMPERATURE, model_name=MODEL_NAME)
 
-# Initializes a Conversational Retrieval Chain
+# Initialize the conversational retrieval chain
 qa_chain = ConversationalRetrievalChain.from_llm(
     llm=llm,
     retriever=retriever,
     return_source_documents=False,
 )
 
-# Defines the structure of the request body for the chatbot API
+# Define the request body structure for the chatbot API
 class Query(BaseModel):
     query: str  # User's question
-    chat_history: list = []  # Supports conversation history for better context retention
+    chat_history: list = []  # Support for conversation history for better context
 
 @app.post("/chat")
 async def ask(query: Query):
@@ -66,12 +74,12 @@ async def ask(query: Query):
             minutes = int((remaining % 3600) // 60)
             seconds = int(remaining % 60)
             return {
-                "answer": "LIMIT_EXCEEDED",  # 超过访问限制 | Access limit exceeded
+                "answer": "LIMIT_EXCEEDED",  # Access limit exceeded
                 "time_remaining": f"{hours}h {minutes}m {seconds}s"
             }
 
     # Update the timestamp of the last query
-    await save_query_time()  # Save current query time
+    await save_query_time()
 
     # Combine system prompt with user's question
     full_query = f"{SYSTEM_PROMPT}\n\n{query.query}"
@@ -79,7 +87,7 @@ async def ask(query: Query):
     # Pass conversation history to help AI remember previous interactions
     response = qa_chain.invoke({
         "question": full_query,
-        "chat_history": query.chat_history,  # Pass chat history
+        "chat_history": query.chat_history,
     })
 
     return {"answer": response["answer"]}
