@@ -3,7 +3,7 @@ name: Ping Upstash Redis (Every 3 Weeks)
 on:
   schedule:
     - cron: '0 3 1 * *'    # Executed on the 1st of every month at 3:00 AM UTC
-    - cron: '0 3 27 * *'   # Executed on the 27st of every month at 3:00 AM UTC
+    - cron: '0 3 27 * *'   # Executed on the 27th of every month at 3:00 AM UTC
 
 jobs:
   ping:
@@ -24,7 +24,7 @@ jobs:
         env:
           REDIS_URL: ${{ secrets.UPSTASH_REDIS_URL }}
         run: |
-          python -c "
+          python <<EOF
 import os
 from datetime import datetime
 from redis import Redis
@@ -32,4 +32,4 @@ from redis import Redis
 r = Redis.from_url(os.environ['REDIS_URL'])
 r.set('keepalive', datetime.utcnow().isoformat(), ex=86400)
 print('[Upstash Ping] at', datetime.utcnow())
-"
+EOF
