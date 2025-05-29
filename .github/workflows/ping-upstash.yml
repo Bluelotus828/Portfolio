@@ -24,16 +24,17 @@ jobs:
         env:
           REDIS_URL: ${{ secrets.UPSTASH_REDIS_URL }}
         run: |
-          echo "import os
+          cat > ping.py <<EOF
+import os
 from datetime import datetime
 from redis import Redis
 
 redis_url = os.environ.get('REDIS_URL')
 if not redis_url.startswith('redis://') and not redis_url.startswith('rediss://'):
-    raise ValueError(f'Invalid Redis URL: {redis_url}')
+    raise ValueError(f"Invalid Redis URL: {redis_url}")
 
 r = Redis.from_url(redis_url)
 r.set('keepalive', datetime.utcnow().isoformat(), ex=86400)
 print('[Upstash Ping] at', datetime.utcnow())
-" > ping.py
+EOF
           python ping.py
