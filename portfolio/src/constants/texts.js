@@ -13,7 +13,7 @@ export const EXPERIENCES_TEXTS = {
 
 export const EXPERIENCES_ITEMS = [
   {
-    time: "01/2025 — Present",
+    time: "01/2025 — 05/2025",
     company: "Reality AI",
     role: "Software Developer Intern",
     description:
